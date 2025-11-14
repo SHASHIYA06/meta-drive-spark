@@ -3,12 +3,24 @@ services:
     name: kmrcl-ai-backend
     plan: free
     env: node
-    buildCommand: npm install
+    region: oregon
+    buildCommand: |
+      npm install --build-from-source
+      npm rebuild sharp --build-from-source
+      npm rebuild better-sqlite3 --build-from-source
     startCommand: node server.js
     envVars:
-      - key: GEMINI_API_KEY
+      - key: GOOGLE_CLOUD_PROJECT
         sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+        sync: false
+      - key: VERTEX_AI_LOCATION
+        value: us-central1
       - key: FRONTEND_URL
         sync: false
       - key: PORT
-        value: 3000
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.9
