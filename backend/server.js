@@ -15,27 +15,45 @@ const sharp = require('sharp');
 const VectorStore = require('./vectorStore');
 const EmbedQueue = require('./embedQueue');
 const JobManager = require('./jobManager');
+const VertexRAG = require('./vertexRag');
+const EnhancedOCR = require('./enhancedOcr');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 
 // Configuration
 const PORT = process.env.PORT || 3000;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
 const CHUNK_SIZE = parseInt(process.env.CHUNK_SIZE) || 1200;
 const CHUNK_OVERLAP = parseInt(process.env.CHUNK_OVERLAP) || 200;
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE) || 8;
+const USE_VERTEX_AI = process.env.GOOGLE_CLOUD_PROJECT ? true : false;
 
-if (!GEMINI_API_KEY) {
-  console.error('ERROR: GEMINI_API_KEY is not set');
-  process.exit(1);
-}
+console.log('🔧 Configuration:');
+console.log('  - Vertex AI:', USE_VERTEX_AI ? 'ENABLED' : 'DISABLED');
+console.log('  - Port:', PORT);
+console.log('  - Chunk Size:', CHUNK_SIZE);
+console.log('  - Batch Size:', BATCH_SIZE);
 
 // Initialize services
 const vectorStore = new VectorStore();
-const embedQueue = new EmbedQueue(GEMINI_API_KEY, BATCH_SIZE);
+const embedQueue = USE_VERTEX_AI ? null : new EmbedQueue(process.env.GEMINI_API_KEY, BATCH_SIZE);
 const jobManager = new JobManager();
+const vertexRAG = USE_VERTEX_AI ? new VertexRAG() : null;
+const enhancedOCR = new EnhancedOCR();
+
+// Initialize async
+(async () => {
+  try {
+    await enhancedOCR.initialize();
+    if (vertexRAG) {
+      await vertexRAG.initialize();
+      console.log('✅ Vertex AI RAG initialized');
+    }
+  } catch (error) {
+    console.error('⚠️ Initialization warning:', error.message);
+  }
+})();
 
 // Middleware
 app.use(cors({ origin: FRONTEND_URL }));
@@ -173,9 +191,24 @@ async function extractText(filePath, mimeType) {
   }
 }
 
-// Generate embeddings using queue
+// Generate embeddings using Vertex AI or Gemini
 async function getEmbedding(text) {
+  if (vertexRAG) {
+    return await vertexRAG.generateEmbedding(text);
+  }
   return await embedQueue.addToQueue(text);
+}
+
+async function getEmbeddingsBatch(texts) {
+  if (vertexRAG) {
+    return await vertexRAG.generateEmbeddingsBatch(texts);
+  }
+  // Fallback to sequential for Gemini
+  const embeddings = [];
+  for (const text of texts) {
+    embeddings.push(await getEmbedding(text));
+  }
+  return embeddings;
 }
 
 // Call Gemini for answer generation
@@ -212,6 +245,7 @@ app.get('/health', (req, res) => {
     ok: true,
     status: 'healthy',
     stats,
+    vertexAI: USE_VERTEX_AI ? 'enabled' : 'disabled',
     timestamp: Date.now()
   });
 });
@@ -262,20 +296,46 @@ async function processIngestion(files, metadata, jobId) {
         file.path
       );
 
-      const extracted = await extractText(file.path, mimeType);
+      // Use Vertex AI Document AI for enhanced OCR if available
+      let extracted;
+      if (vertexRAG && (mimeType.includes('pdf') || mimeType.includes('image'))) {
+        try {
+          const vertexResult = await vertexRAG.processDocument(file.path, mimeType);
+          extracted = {
+            text: vertexResult.text,
+            tables: vertexResult.tables,
+            entities: vertexResult.entities,
+            type: 'text'
+          };
+        } catch (error) {
+          console.warn('Vertex AI OCR failed, falling back to standard extraction:', error.message);
+          extracted = await extractText(file.path, mimeType);
+        }
+      } else {
+        extracted = await extractText(file.path, mimeType);
+      }
       
       if (extracted.type === 'text') {
         const chunks = chunkText(extracted.text);
         
-        for (let j = 0; j < chunks.length; j++) {
-          const embedding = await getEmbedding(chunks[j]);
-          vectorStore.addChunk(uuidv4(), docId, chunks[j], embedding, j);
+        // Batch embeddings for efficiency
+        if (chunks.length > 5 && (vertexRAG || embedQueue)) {
+          const embeddings = await getEmbeddingsBatch(chunks);
+          for (let j = 0; j < chunks.length; j++) {
+            vectorStore.addChunk(uuidv4(), docId, chunks[j], embeddings[j], j);
+          }
+        } else {
+          for (let j = 0; j < chunks.length; j++) {
+            const embedding = await getEmbedding(chunks[j]);
+            vectorStore.addChunk(uuidv4(), docId, chunks[j], embedding, j);
+          }
         }
       } else if (extracted.type === 'rows') {
+        const texts = extracted.rows.map(r => r.text);
+        const embeddings = await getEmbeddingsBatch(texts);
+        
         for (let j = 0; j < extracted.rows.length; j++) {
-          const row = extracted.rows[j];
-          const embedding = await getEmbedding(row.text);
-          vectorStore.addChunk(uuidv4(), docId, row.text, embedding, j);
+          vectorStore.addChunk(uuidv4(), docId, texts[j], embeddings[j], j);
         }
       }
 
@@ -331,7 +391,12 @@ Instructions:
 
 Answer:`;
 
-    const answer = await callGemini(prompt);
+    let answer;
+    if (vertexRAG) {
+      answer = await vertexRAG.generateResponse(query, context);
+    } else {
+      answer = await callGemini(prompt);
+    }
 
     const sources = results.map((r, i) => ({
       id: i + 1,
