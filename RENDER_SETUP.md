@@ -4,11 +4,87 @@
 
 ---
 
-## Prerequisites
+## Quick Start - Render Deployment (5 Minutes)
+
+### Step 1: Push to GitHub
+```bash
+git add .
+git commit -m "Deploy to Render"
+git push origin main
+```
+
+### Step 2: Create Render Web Service
+1. Go to https://dashboard.render.com/
+2. Click **New +** → **Web Service**
+3. Connect your GitHub repository
+4. Configure settings:
+
+**Basic Settings:**
+- **Name**: `kmrcl-ai-backend`
+- **Region**: `Oregon (US West)`
+- **Branch**: `main`
+- **Root Directory**: `backend` ⚠️ **IMPORTANT**
+- **Runtime**: `Node`
+- **Build Command**: `npm install`
+- **Start Command**: `node server.js`
+
+**Instance Type:**
+- Select **Free** (for testing)
+
+### Step 3: Add Environment Variables
+
+Click **Environment** tab and add:
+
+```bash
+# Required - Your Google Cloud Project ID
+GOOGLE_CLOUD_PROJECT=your-project-id
+
+# Required - Service Account JSON (one line, no line breaks)
+GOOGLE_APPLICATION_CREDENTIALS_JSON={"type":"service_account","project_id":"..."}
+
+# Required - Frontend URL (update after Netlify deployment)
+FRONTEND_URL=https://your-app.netlify.app
+
+# Optional - Vertex AI Configuration
+VERTEX_AI_LOCATION=us-central1
+
+# Optional - Server Configuration
+PORT=10000
+NODE_ENV=production
+OCR_LANG=eng
+BATCH_SIZE=8
+CHUNK_SIZE=1200
+CHUNK_OVERLAP=200
+SQLITE_PATH=/opt/render/project/src/vectorstore.sqlite
+```
+
+### Step 4: Deploy
+1. Click **Create Web Service**
+2. Wait 5-10 minutes for deployment
+3. Your backend URL: `https://kmrcl-ai-backend.onrender.com`
+
+### Step 5: Test Your Backend
+```bash
+curl https://kmrcl-ai-backend.onrender.com/health
+```
+
+Expected response:
+```json
+{
+  "ok": true,
+  "status": "healthy",
+  "stats": {"documents": 0, "chunks": 0},
+  "vertexAI": "enabled"
+}
+```
+
+---
+
+## Prerequisites (for Google Cloud integration)
 
 1. **Google Cloud Account** with billing enabled
 2. **Render Account** (free tier works)
-3. **Service Account Key** from Google Cloud
+3. **Service Account Key** from Google Cloud (optional for advanced features)
 
 ---
 
