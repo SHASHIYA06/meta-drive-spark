@@ -1,118 +1,171 @@
-# ✅ Render Deployment Checklist
+# ✅ RENDER DEPLOYMENT - FIXED VERSION
 
-## Before Deployment
+## 🚨 CRITICAL: Push Updated Code First!
 
-- [ ] Push code to GitHub (main branch)
-- [ ] Confirm `backend/` folder exists in repository
-- [ ] Environment variables ready (see below)
+Before deploying to Render, you MUST push the latest code to GitHub:
+
+```bash
+cd /path/to/meta-drive-spark
+git add .
+git commit -m "Fix Render deployment - remove opencv4nodejs"
+git push origin main
+```
+
+**Wait 30 seconds for GitHub to process**, then proceed to Render.
 
 ---
 
-## Render Dashboard Settings (COPY THESE EXACTLY)
+## Step 1: Create Render Web Service
 
-### 1. Create New Web Service
-Go to: https://dashboard.render.com/ → **New +** → **Web Service**
+1. Go to: https://dashboard.render.com/
+2. Click **New +** → **Web Service**
+3. Connect your GitHub repository: `SHASHIYA06/meta-drive-spark`
+4. Click **Connect**
 
-### 2. Connect Repository
-- Select your GitHub repo: `meta-drive-spark`
-- Click **Connect**
+---
 
-### 3. Configure Service (EXACT SETTINGS)
+## Step 2: Configure Service Settings (EXACT VALUES)
 
-| Setting | Value |
-|---------|-------|
-| **Name** | `kmrcl-ai-backend` |
-| **Region** | `Oregon (US West)` |
-| **Branch** | `main` |
-| **Root Directory** | `backend` ⚠️ **CRITICAL** |
-| **Runtime** | `Node` |
-| **Build Command** | `npm install` |
-| **Start Command** | `node server.js` |
-| **Instance Type** | `Free` |
+Copy these settings EXACTLY as shown:
 
-### 4. Environment Variables (Add in Render Dashboard)
+| Setting | Value | ⚠️ Important |
+|---------|-------|--------------|
+| **Name** | `kmrcl-ai-backend` | Any name is fine |
+| **Region** | `Oregon (US West)` | Choose closest to users |
+| **Branch** | `main` | **MUST match your GitHub branch** |
+| **Root Directory** | `backend` | **CRITICAL - Don't forget!** |
+| **Runtime** | `Node` | Auto-detected |
+| **Build Command** | `npm install` | Default is fine |
+| **Start Command** | `node server.js` | Must be exact |
+| **Plan** | `Free` | Or Starter for better performance |
 
-Click **Environment** tab, then add each variable:
+---
 
-#### Required Variables:
+## Step 3: Add Environment Variables
+
+Click **Environment** tab in Render dashboard, then add these one by one:
+
+### Required for Basic Operation:
+
+**1. GEMINI_API_KEY** (if not using Google Cloud)
 ```
-GOOGLE_CLOUD_PROJECT
-Value: your-google-cloud-project-id
+Key: GEMINI_API_KEY
+Value: AIzaSyDCebqwZVLQo0c0hlNCFIoD-YrpOOcTpDk
 ```
 
+**2. FRONTEND_URL**
 ```
-GOOGLE_APPLICATION_CREDENTIALS_JSON
-Value: {"type":"service_account","project_id":"your-project",...}
-(Paste entire JSON on ONE LINE, no line breaks)
-```
-
-```
-FRONTEND_URL
+Key: FRONTEND_URL  
 Value: https://bemlkmrcldocuemt.netlify.app
 ```
 
-#### Optional Variables (with defaults):
+**3. PORT**
 ```
-VERTEX_AI_LOCATION=us-central1
-PORT=10000
-NODE_ENV=production
-OCR_LANG=eng
-BATCH_SIZE=8
-CHUNK_SIZE=1200
-CHUNK_OVERLAP=200
-SQLITE_PATH=/opt/render/project/src/vectorstore.sqlite
+Key: PORT
+Value: 10000
+```
+
+### Optional - Only if using Google Cloud Vertex AI:
+
+**4. GOOGLE_CLOUD_PROJECT**
+```
+Key: GOOGLE_CLOUD_PROJECT
+Value: your-google-cloud-project-id
+```
+
+**5. GOOGLE_APPLICATION_CREDENTIALS_JSON**
+```
+Key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+Value: {"type":"service_account","project_id":"your-project-id",...}
+```
+⚠️ **Important**: Paste entire JSON on ONE LINE with NO line breaks
+
+**6. VERTEX_AI_LOCATION**
+```
+Key: VERTEX_AI_LOCATION
+Value: us-central1
 ```
 
 ---
 
-## Deploy & Test
+## Step 4: Deploy!
 
-### 5. Deploy
-- Click **Create Web Service**
-- Wait 5-10 minutes for build
-- **Build logs** will show progress
-- Note your service URL: `https://kmrcl-ai-backend.onrender.com`
+1. Click **Create Web Service** button at the bottom
+2. Render will start building (5-10 minutes first time)
+3. Watch the **Logs** tab for progress
+4. Your service URL will be: `https://kmrcl-ai-backend.onrender.com`
 
-### 6. Test Backend
+---
+
+## Step 5: Test Your Deployment
+
+Once deployment shows "Live", test the health endpoint:
+
 ```bash
-# Health check
 curl https://kmrcl-ai-backend.onrender.com/health
+```
 
-# Expected response:
+**Expected Response:**
+```json
 {
   "ok": true,
   "status": "healthy",
   "stats": { "documents": 0, "chunks": 0 },
-  "vertexAI": "enabled"
+  "vertexAI": "disabled"
 }
 ```
 
-### 7. Update Frontend
-Update frontend `.env.production`:
-```
-VITE_BACKEND_URL=https://kmrcl-ai-backend.onrender.com
-```
-
-Redeploy frontend to Netlify.
+If you get this response, deployment succeeded! ✅
 
 ---
 
-## Common Issues
+## Step 6: Update Frontend
 
-### ❌ "No matching version found for opencv4nodejs"
-**Fixed** - Removed from dependencies
+Update your frontend environment variables:
 
-### ❌ "Cannot find module 'pdf2pic'"
-**Fixed** - Using pdf-parse only for now
+**In Netlify Dashboard:**
+1. Go to Site settings → Build & deploy → Environment
+2. Add/Update:
+   ```
+   VITE_BACKEND_URL=https://kmrcl-ai-backend.onrender.com
+   ```
+3. Trigger redeploy
 
-### ❌ "Build failed - wrong directory"
-**Solution**: Set `Root Directory` to `backend` in Render settings
+---
 
-### ❌ "Module not found" errors
-**Solution**: Ensure `Build Command` is exactly `npm install`
+## 🔧 Troubleshooting Common Errors
 
-### ❌ Google Cloud auth failed
-**Solution**: Verify `GOOGLE_APPLICATION_CREDENTIALS_JSON` is single-line JSON with no line breaks
+### Error: "No matching version found for opencv4nodejs"
+**Cause**: Old code still in GitHub  
+**Fix**: 
+1. Make sure you pushed the latest code (see top of this file)
+2. In Render, click **Manual Deploy** → **Clear build cache & deploy**
+
+### Error: "Cannot find module './vectorStore'"
+**Cause**: `Root Directory` not set to `backend`  
+**Fix**: Go to Settings → change Root Directory to `backend` → Save → Redeploy
+
+### Error: "ENOENT: no such file or directory"
+**Cause**: Files missing or wrong start command  
+**Fix**: Ensure `Start Command` is exactly `node server.js`
+
+### Error: "Port 3000 already in use"
+**Cause**: PORT env var not set  
+**Fix**: Add environment variable `PORT=10000` in Render
+
+### Build succeeds but service won't start
+**Cause**: Missing environment variables  
+**Fix**: 
+1. Check Logs tab for specific error
+2. Ensure `GEMINI_API_KEY` or Google Cloud credentials are set
+3. Ensure `FRONTEND_URL` is set
+
+### Error: "sharp" or "better-sqlite3" build failed
+**Cause**: Native dependencies need rebuild on Render  
+**Fix**: Change Build Command to:
+```
+npm install --build-from-source && npm rebuild sharp better-sqlite3 --build-from-source
+```
 
 ---
 
