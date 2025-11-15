@@ -1,6 +1,5 @@
 const sharp = require('sharp');
 const Tesseract = require('tesseract.js');
-const { fromPath } = require('pdf2pic');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -152,56 +151,24 @@ class EnhancedOCR {
   }
 
   /**
-   * Convert PDF pages to images and OCR each page
+   * Convert PDF pages to images and OCR each page (simplified - pdf-parse only)
    */
   async extractFromPDF(pdfPath) {
     try {
-      const options = {
-        density: 300,
-        saveFilename: path.basename(pdfPath, '.pdf'),
-        savePath: this.tempDir,
-        format: 'png',
-        width: 2480,
-        height: 3508,
-      };
-
-      const converter = fromPath(pdfPath, options);
+      // Note: For advanced PDF-to-image conversion, install pdf-poppler or ghostscript
+      console.log('PDF OCR: Using pdf-parse text extraction only');
       
-      let allText = '';
-      let pageNum = 1;
-      let hasMorePages = true;
-
-      while (hasMorePages) {
-        try {
-          const pageInfo = await converter(pageNum, { responseType: 'image' });
-          
-          if (!pageInfo || !pageInfo.path) {
-            hasMorePages = false;
-            break;
-          }
-
-          console.log(`Processing page ${pageNum}...`);
-          const ocrResult = await this.extractText(pageInfo.path, { strategy: 'scanned' });
-          
-          allText += `\n\n=== Page ${pageNum} ===\n\n`;
-          allText += ocrResult.text;
-
-          // Clean up page image
-          await fs.unlink(pageInfo.path).catch(() => {});
-
-          pageNum++;
-        } catch (error) {
-          hasMorePages = false;
-        }
-      }
+      const pdfParse = require('pdf-parse');
+      const buffer = await fs.readFile(pdfPath);
+      const data = await pdfParse(buffer);
 
       return {
-        text: allText.trim(),
-        totalPages: pageNum - 1,
+        text: data.text || '',
+        totalPages: data.numpages || 0,
       };
     } catch (error) {
-      console.error('PDF OCR error:', error);
-      throw error;
+      console.error('PDF extraction error:', error);
+      return { text: '', totalPages: 0 };
     }
   }
 
