@@ -15,8 +15,6 @@ const sharp = require('sharp');
 const VectorStore = require('./vectorStore');
 const EmbedQueue = require('./embedQueue');
 const JobManager = require('./jobManager');
-const VertexRAG = require('./vertexRag');
-const EnhancedOCR = require('./enhancedOcr');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -37,23 +35,21 @@ console.log('  - Batch Size:', BATCH_SIZE);
 
 // Initialize services
 const vectorStore = new VectorStore();
-const embedQueue = USE_VERTEX_AI ? null : new EmbedQueue(process.env.GEMINI_API_KEY, BATCH_SIZE);
+const embedQueue = new EmbedQueue(process.env.GEMINI_API_KEY, BATCH_SIZE);
 const jobManager = new JobManager();
-const vertexRAG = USE_VERTEX_AI ? new VertexRAG() : null;
-const enhancedOCR = new EnhancedOCR();
 
-// Initialize async
-(async () => {
+// Optional: Load Vertex AI only if configured
+let vertexRAG = null;
+if (USE_VERTEX_AI) {
   try {
-    await enhancedOCR.initialize();
-    if (vertexRAG) {
-      await vertexRAG.initialize();
-      console.log('✅ Vertex AI RAG initialized');
-    }
+    const VertexRAG = require('./vertexRag');
+    vertexRAG = new VertexRAG();
+    await vertexRAG.initialize();
+    console.log('✅ Vertex AI RAG initialized');
   } catch (error) {
-    console.error('⚠️ Initialization warning:', error.message);
+    console.error('⚠️ Vertex AI not available:', error.message);
   }
-})();
+}
 
 // Middleware
 app.use(cors({ origin: FRONTEND_URL }));
@@ -94,28 +90,64 @@ function chunkText(text, chunkSize = CHUNK_SIZE, overlap = CHUNK_OVERLAP) {
   return overlappedChunks;
 }
 
-// OCR with image pre-processing
+// Enhanced OCR with image pre-processing
 async function extractImageOCR(filePath) {
   try {
-    // Pre-process image for better OCR
-    const processedPath = filePath + '_processed.png';
-    await sharp(filePath)
-      .greyscale()
-      .normalize()
-      .threshold(128)
-      .toFile(processedPath);
+    // Pre-process image for better OCR with multiple strategies
+    const strategies = [
+      { name: 'default', threshold: 128 },
+      { name: 'circuit', threshold: 120 },
+      { name: 'text', threshold: 160 },
+    ];
 
-    const result = await Tesseract.recognize(processedPath, 'eng', {
-      logger: m => console.log(m)
-    });
+    let bestResult = null;
+    let highestConfidence = 0;
 
-    await fs.unlink(processedPath).catch(() => {});
+    for (const strategy of strategies) {
+      try {
+        const processedPath = `${filePath}_${strategy.name}.png`;
+        await sharp(filePath)
+          .greyscale()
+          .normalize()
+          .threshold(strategy.threshold)
+          .sharpen()
+          .median(3)
+          .toFile(processedPath);
+
+        const result = await Tesseract.recognize(processedPath, 'eng', {
+          logger: info => {
+            if (info.status === 'recognizing text') {
+              console.log(`OCR (${strategy.name}): ${Math.round(info.progress * 100)}%`);
+            }
+          }
+        });
+
+        await fs.unlink(processedPath).catch(() => {});
+
+        if (result.data.confidence > highestConfidence) {
+          highestConfidence = result.data.confidence;
+          bestResult = result;
+        }
+
+        // Stop if we get high confidence
+        if (highestConfidence > 85) break;
+      } catch (err) {
+        console.error(`Strategy ${strategy.name} failed:`, err.message);
+      }
+    }
+
+    if (bestResult) {
+      console.log(`✅ OCR complete (confidence: ${Math.round(highestConfidence)}%)`);
+      return bestResult.data.text;
+    }
+
+    // Final fallback to original image
+    console.log('⚠️ Using fallback OCR');
+    const result = await Tesseract.recognize(filePath, 'eng');
     return result.data.text;
   } catch (error) {
     console.error('OCR error:', error);
-    // Fallback to original image
-    const result = await Tesseract.recognize(filePath, 'eng');
-    return result.data.text;
+    throw error;
   }
 }
 
