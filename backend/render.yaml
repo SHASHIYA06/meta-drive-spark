@@ -8,7 +8,7 @@ services:
     buildCommand: npm install
     startCommand: node server.js
     envVars:
-      # Primary - Choose Gemini API (simple) OR Google Cloud (advanced)
+      # Required - Gemini API for basic functionality
       - key: GEMINI_API_KEY
         sync: false
       - key: FRONTEND_URL
@@ -18,7 +18,8 @@ services:
       - key: NODE_ENV
         value: production
       
-      # Optional - Only if using Google Cloud Vertex AI
+      # Optional - Only needed for Google Cloud Vertex AI (advanced features)
+      # Leave these empty unless you want to use Vertex AI
       - key: GOOGLE_CLOUD_PROJECT
         sync: false
       - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
@@ -26,7 +27,7 @@ services:
       - key: VERTEX_AI_LOCATION
         value: us-central1
       
-      # Processing config
+      # Processing configuration
       - key: OCR_LANG
         value: eng
       - key: BATCH_SIZE
