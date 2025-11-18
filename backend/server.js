@@ -44,8 +44,14 @@ if (USE_VERTEX_AI) {
   try {
     const VertexRAG = require('./vertexRag');
     vertexRAG = new VertexRAG();
-    await vertexRAG.initialize();
-    console.log('✅ Vertex AI RAG initialized');
+    vertexRAG
+      .initialize()
+      .then(() => {
+        console.log('✅ Vertex AI RAG initialized');
+      })
+      .catch((error) => {
+        console.error('⚠️ Vertex AI initialization failed:', error.message);
+      });
   } catch (error) {
     console.error('⚠️ Vertex AI not available:', error.message);
   }
