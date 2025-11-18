@@ -1,6 +1,7 @@
 {
   "name": "kmrcl-backend",
   "version": "2.0.0",
+  "type": "commonjs",
   "description": "KMRCL Metro Document Intelligence Backend - Upgraded",
   "main": "server.js",
   "scripts": {
