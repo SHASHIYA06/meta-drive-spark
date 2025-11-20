@@ -26,6 +26,7 @@ const CHUNK_SIZE = parseInt(process.env.CHUNK_SIZE) || 1200;
 const CHUNK_OVERLAP = parseInt(process.env.CHUNK_OVERLAP) || 200;
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE) || 8;
 const USE_VERTEX_AI = process.env.GOOGLE_CLOUD_PROJECT ? true : false;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 console.log('🔧 Configuration:');
 console.log('  - Vertex AI:', USE_VERTEX_AI ? 'ENABLED' : 'DISABLED');

@@ -2,10 +2,18 @@ const Database = require('better-sqlite3');
 const path = require('path');
 
 class VectorStore {
-  constructor(dbPath = './vectorstore.sqlite') {
+  constructor(dbPath = process.env.SQLITE_PATH || './vectorstore.sqlite') {
+    // Ensure directory exists for Railway persistent volume
+    const dir = path.dirname(dbPath);
+    const fs = require('fs');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
     this.db = new Database(dbPath);
     this.initDatabase();
     this.memoryCache = new Map();
+    console.log(`📊 Vector store initialized at: ${dbPath}`);
   }
 
   initDatabase() {
