@@ -294,6 +294,25 @@ async function callGemini(prompt) {
 
 // Endpoints
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    ok: true,
+    service: 'KMRCL Backend v2.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      stats: '/stats',
+      ingest: 'POST /ingest',
+      ask: 'POST /ask',
+      search: 'POST /search-multi',
+      clear: 'DELETE /clear'
+    },
+    vertexAI: USE_VERTEX_AI ? 'enabled' : 'disabled',
+    timestamp: Date.now()
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   const stats = vectorStore.getStats();

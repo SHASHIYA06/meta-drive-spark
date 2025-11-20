@@ -4,6 +4,47 @@
 Your Vercel frontend shows "Search failed" and "Load failed" errors because:
 1. Backend CORS is blocking Vercel's domain
 2. Vercel environment variables may not be configured
+3. Backend URL might be incorrect
+
+## Quick Diagnosis
+
+### Test 1: Check Backend is Running
+
+Open your Render URL in a browser:
+```
+https://your-backend.onrender.com/
+```
+
+**Expected response:**
+```json
+{
+  "ok": true,
+  "service": "KMRCL Backend v2.0",
+  "status": "running"
+}
+```
+
+✅ If you see this: Backend is working!
+❌ If you see "Cannot GET /": Update your code (fixed in latest version)
+❌ If timeout/502: Backend is crashed or sleeping
+
+### Test 2: Check CORS in Browser Console
+
+1. Open your Vercel app
+2. Press F12 (open DevTools)
+3. Go to **Console** tab
+4. Try an AI search
+5. Look for:
+   - `🔍 Calling backend: https://...` (should match your Render URL)
+   - Red CORS errors mentioning `Access-Control-Allow-Origin`
+
+### Test 3: Check Network Requests
+
+1. In DevTools, go to **Network** tab
+2. Try an AI search
+3. Look for requests to `/ask` or `/search-multi`
+4. Click on the failed request
+5. Check the URL - does it match your Render URL?
 
 ## Quick Fix (5 minutes)
 

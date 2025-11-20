@@ -97,75 +97,115 @@ export async function createFolder(name: string, parentId?: string) {
 }
 
 export async function askAI(query: string, fileIds?: string[]) {
-  const response = await fetchWithTimeout(`${BACKEND_URL}/ask`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, fileIds })
-  }, 90000); // 90 seconds for AI queries
+  try {
+    console.log('🔍 Calling backend:', `${BACKEND_URL}/ask`);
+    const response = await fetchWithTimeout(`${BACKEND_URL}/ask`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, fileIds })
+    }, 90000); // 90 seconds for AI queries
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'AI search failed' }));
-    throw new Error(error.error || 'AI search failed. Please try again.');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'AI search failed' }));
+      console.error('❌ Backend error:', error);
+      throw new Error(error.error || 'AI search failed. Please try again.');
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error('❌ Network error:', error.message);
+    if (error.message.includes('fetch')) {
+      throw new Error(`Cannot connect to backend at ${BACKEND_URL}. Please check your VITE_BACKEND_URL environment variable.`);
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function searchDocuments(query: string, fileIds?: string[]) {
-  const response = await fetchWithTimeout(`${BACKEND_URL}/search-multi`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, fileIds })
-  }, 60000);
+  try {
+    console.log('🔍 Calling backend:', `${BACKEND_URL}/search-multi`);
+    const response = await fetchWithTimeout(`${BACKEND_URL}/search-multi`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, fileIds })
+    }, 60000);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Document search failed' }));
-    throw new Error(error.error || 'Document search failed. Please try again.');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Document search failed' }));
+      console.error('❌ Backend error:', error);
+      throw new Error(error.error || 'Document search failed. Please try again.');
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error('❌ Network error:', error.message);
+    if (error.message.includes('fetch')) {
+      throw new Error(`Cannot connect to backend at ${BACKEND_URL}. Please check your VITE_BACKEND_URL environment variable.`);
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function searchArchitecture(query: string, fileIds?: string[]) {
-  const response = await fetchWithTimeout(`${BACKEND_URL}/ask`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ 
-      query: `Find architecture and circuit diagrams: ${query}`,
-      fileIds 
-    })
-  }, 90000);
+  try {
+    console.log('🔍 Calling backend:', `${BACKEND_URL}/ask (architecture)`);
+    const response = await fetchWithTimeout(`${BACKEND_URL}/ask`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        query: `Find architecture and circuit diagrams: ${query}`,
+        fileIds 
+      })
+    }, 90000);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Architecture search failed' }));
-    throw new Error(error.error || 'Architecture search failed. Please try again.');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Architecture search failed' }));
+      console.error('❌ Backend error:', error);
+      throw new Error(error.error || 'Architecture search failed. Please try again.');
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error('❌ Network error:', error.message);
+    if (error.message.includes('fetch')) {
+      throw new Error(`Cannot connect to backend at ${BACKEND_URL}. Please check your VITE_BACKEND_URL environment variable.`);
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function searchStructured(query: string, fileIds?: string[]) {
-  const response = await fetchWithTimeout(`${BACKEND_URL}/search-multi`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ 
-      query,
-      fileIds 
-    })
-  }, 60000);
+  try {
+    console.log('🔍 Calling backend:', `${BACKEND_URL}/search-multi (structured)`);
+    const response = await fetchWithTimeout(`${BACKEND_URL}/search-multi`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        query,
+        fileIds 
+      })
+    }, 60000);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Structured search failed' }));
-    throw new Error(error.error || 'Structured search failed. Please try again.');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Structured search failed' }));
+      console.error('❌ Backend error:', error);
+      throw new Error(error.error || 'Structured search failed. Please try again.');
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error('❌ Network error:', error.message);
+    if (error.message.includes('fetch')) {
+      throw new Error(`Cannot connect to backend at ${BACKEND_URL}. Please check your VITE_BACKEND_URL environment variable.`);
+    }
+    throw error;
   }
-
-  return response.json();
 }
