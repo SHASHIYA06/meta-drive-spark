@@ -21,7 +21,9 @@ const upload = multer({ dest: 'uploads/' });
 
 // Configuration
 const PORT = process.env.PORT || 3000;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:8080', 'http://localhost:5173'];
 const CHUNK_SIZE = parseInt(process.env.CHUNK_SIZE) || 1200;
 const CHUNK_OVERLAP = parseInt(process.env.CHUNK_OVERLAP) || 200;
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE) || 8;
@@ -31,6 +33,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 console.log('🔧 Configuration:');
 console.log('  - Vertex AI:', USE_VERTEX_AI ? 'ENABLED' : 'DISABLED');
 console.log('  - Port:', PORT);
+console.log('  - Allowed Origins:', ALLOWED_ORIGINS.join(', '));
 console.log('  - Chunk Size:', CHUNK_SIZE);
 console.log('  - Batch Size:', BATCH_SIZE);
 
@@ -59,7 +62,21 @@ if (USE_VERTEX_AI) {
 }
 
 // Middleware
-app.use(cors({ origin: FRONTEND_URL }));
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (ALLOWED_ORIGINS.indexOf(origin) !== -1 || ALLOWED_ORIGINS.includes('*')) {
+      callback(null, true);
+    } else {
+      console.warn('⚠️ CORS blocked request from:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 
 // Clean old jobs periodically
