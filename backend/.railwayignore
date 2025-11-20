@@ -1,0 +1,8 @@
+# Railway ignore file
+node_modules/
+*.log
+.env
+.env.local
+vectorstore.sqlite
+uploads/*
+!uploads/.gitkeep
